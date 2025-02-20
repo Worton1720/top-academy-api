@@ -3,6 +3,16 @@
 	"description": "Library for working with Top Academy API",
 	"version": "1.0.0",
 	"homepage": "https://github.com/Worton1720/top-academy-api",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Worton1720/top-academy-api.git"
+	},
+	"files": [
+		"index.js",
+		"src/",
+		"README.md",
+		"LICENSE"
+	],
 	"main": "index.js",
 	"author": "Rodion",
 	"license": "NC-SA",
