@@ -2,13 +2,15 @@
 
 ## Содержание
 
-- [Общее описание](#общее-описание)-
-- [Установка библиотеки](#установка)
+- [Общее описание](#общее-описание)
+- [Установка библиотеки](#установка-библиотеки)
 - [Методы API](#методы-api)
   - [Получение профиля](#получение-профиля)
   - [Получение расписания](#получение-расписания)
+  - [Аутентификация](#аутентификация)
+  - [Выход из системы](#выход-из-системы)
 - [Параметры и типы данных](#параметры-и-типы-данных)
-- [Примеры использования](#продолжение-примера)
+- [Примеры использования](#примеры-использования)
 
 ## Общее описание
 
@@ -40,6 +42,24 @@ npm i top-academy-api
   - `endDate`: Дата окончания периода (в формате `YYYY-MM-DD`)
 - **Возвращаемые данные:** Объект с данными расписания
 
+### Аутентификация
+
+- **Метод:** `getRefreshToken`
+- **Описание:** Возвращает новый refresh токен.
+- **Параметры:**
+  - `login`: Логин пользователя (строка)
+  - `password`: Пароль пользователя (строка)
+  - `HEADERS`: Заголовки запроса (объект)
+- **Возвращаемые данные:** Строка с новым токеном или null в случае ошибки
+
+### Выход из системы
+
+- **Метод:** `logout`
+- **Описание:** Выполняет выход из системы.
+- **Параметры:**
+  - `HEADERS`: Заголовки запроса (объект)
+- **Возвращаемые данные:** Промис, который разрешается при успешном выходе
+
 ## Параметры и типы данных
 
 - **login**: Логин студента (строка)
@@ -52,17 +72,33 @@ npm i top-academy-api
 ### Получение профиля
 
 ```javascript
-const student = new StudentAPI('login', 'password', false)
-const profile = await student.getProfile()
-console.log(profile)
+const student = new StudentAPI("login", "password", false);
+const profile = await student.getProfile();
+console.log(profile);
 ```
 
 ### Получение расписания
 
 ```javascript
-const student = new StudentAPI('login', 'password', false)
-const schedule = await student.getSchedule('2024-10-28', '2024-11-03')
-console.log(schedule)
+const student = new StudentAPI("login", "password", false);
+const schedule = await student.getSchedule("2024-10-28", "2024-11-03");
+console.log(schedule);
+```
+
+### Аутентификация
+
+```javascript
+const student = new StudentAPI("login", "password", false);
+const token = await student.getRefreshToken("login", "password", headers);
+console.log(token);
+```
+
+### Выход из системы
+
+```javascript
+const student = new StudentAPI("login", "password", false);
+await student.logout(headers);
+console.log("Logged out successfully");
 ```
 
 Для использования API необходимо создать экземпляр класса `StudentAPI` и вызвать необходимые методы.

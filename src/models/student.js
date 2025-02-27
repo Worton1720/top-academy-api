@@ -1,7 +1,14 @@
-import { checkTokenValidity, getRefreshToken } from 'top-academy-api/src/api/auth.js'
-import { parseProfile } from 'top-academy-api/src/api/profile.js'
-import { parseScheduleForPeriod } from 'top-academy-api/src/api/schedule.js'
-import Logger from 'top-academy-api/src/utils/logger.js' // Импортируем логгер
+import { getRefreshToken } from '../api/auth.js'
+import {
+	parseProfile,
+	fetchGrades,
+	fetchHomework,
+	fetchAverageGrade,
+	fetchAttendance,
+	fetchLeaders,
+} from '../api/profile.js'
+import { parseScheduleForPeriod } from '../api/schedule.js'
+import Logger from '../utils/logger.js' // Импортируем логгер
 
 // Создаем экземпляр логгера
 const logger = new Logger(false) // Создаем экземпляр Logger с префиксом
@@ -56,12 +63,15 @@ export class StudentAPI {
 	 * @returns {Promise<any>} Результат вызова метода.
 	 */
 	#beforeCall = async method => {
-		const isValid = await checkTokenValidity(this.#HEADERS)
-		if (!isValid) {
-			await this.#authenticate()
+		try {
+			return await method.call(this)
+		} catch (error) {
+			if (error.code === 'TOKEN_ERROR') {
+				await this.#authenticate()
+				return await method.call(this)
+			}
+			throw error
 		}
-
-		return method.call(this)
 	}
 
 	// Метод для получения обновленного токена
@@ -80,7 +90,7 @@ export class StudentAPI {
 
 		if (!login || !password) {
 			logger.log('error', 'Missing login or password')
-			throw new Error('Отсутствует логин или пароль')
+			throw new Error('Missing login or password')
 		}
 		return await getRefreshToken(login, password, headers)
 	}
@@ -92,6 +102,7 @@ export class StudentAPI {
 	 * @throws Выбрасывает ошибку при неудачной аутентификации.
 	 */
 	#authenticate = async () => {
+		const refreshToken = this.#HEADERS.authorization
 		try {
 			await this.validateUserData()
 			logger.log('info', 'Successfully authenticated.')
@@ -100,6 +111,33 @@ export class StudentAPI {
 			logger.log('error', `Authentication error: ${error.message}`)
 			throw new Error(error.message)
 		}
+	}
+
+	/**
+	 * Метод для ручного обновления токена.
+	 * @returns {Promise<void>}
+	 * @throws Выбрасывает ошибку при неудачном обновлении токена.
+	 */
+	async refreshToken() {
+		try {
+			const refreshToken = await this.#getRefreshToken()
+			this.#HEADERS.authorization = refreshToken
+			logger.log('info', 'Token refreshed successfully.')
+		} catch (error) {
+			logger.log('error', `Token refresh error: ${error.message}`)
+			throw new Error(error.message)
+		}
+	}
+
+	/**
+	 * Метод для выхода из системы.
+	 * Очищает заголовок авторизации и уничтожает все данные пользователя.
+	 */
+	logout() {
+		this.#HEADERS.authorization = null
+		this.#login = null
+		this.#password = null
+		logger.log('info', 'Logged out and destroyed user data successfully.')
 	}
 
 	// Метод для получения профиля пользователя
@@ -136,9 +174,94 @@ export class StudentAPI {
 					this.#HEADERS
 				)
 				if (dataSchedule) return dataSchedule
-				else throw new Error('Ошибка получения расписания')
+				else throw new Error('Failed to get schedule')
 			} catch (error) {
 				logger.log('error', `Getting schedule: ${error.message}`)
+				throw new Error(error.message)
+			}
+		})
+	}
+
+	// Метод для получения оценок
+	/**
+	 * Получает оценки пользователя.
+	 * @returns {Promise<Object>} Объект с данными оценок.
+	 * @throws Выбрасывает ошибку при неудачном получении оценок.
+	 */
+	getGrades = async () => {
+		return await this.#beforeCall(async () => {
+			try {
+				return await fetchGrades(this.#HEADERS)
+			} catch (error) {
+				logger.log('error', `Getting grades: ${error.message}`)
+				throw new Error(error.message)
+			}
+		})
+	}
+
+	// Метод для получения домашних заданий
+	/**
+	 * Получает домашние задания пользователя.
+	 * @returns {Promise<Object>} Объект с данными домашних заданий.
+	 * @throws Выбрасывает ошибку при неудачном получении домашних заданий.
+	 */
+	getHomework = async () => {
+		return await this.#beforeCall(async () => {
+			try {
+				return await fetchHomework(this.#HEADERS)
+			} catch (error) {
+				logger.log('error', `Getting homework: ${error.message}`)
+				throw new Error(error.message)
+			}
+		})
+	}
+
+	// Метод для получения средней оценки
+	/**
+	 * Получает среднюю оценку пользователя.
+	 * @returns {Promise<Object>} Объект с данными средней оценки.
+	 * @throws Выбрасывает ошибку при неудачном получении средней оценки.
+	 */
+	getAverageGrade = async () => {
+		return await this.#beforeCall(async () => {
+			try {
+				return await fetchAverageGrade(this.#HEADERS)
+			} catch (error) {
+				logger.log('error', `Getting average grade: ${error.message}`)
+				throw new Error(error.message)
+			}
+		})
+	}
+
+	// Метод для получения посещаемости
+	/**
+	 * Получает посещаемость пользователя.
+	 * @returns {Promise<Object>} Объект с данными посещаемости.
+	 * @throws Выбрасывает ошибку при неудачном получении посещаемости.
+	 */
+	getAttendance = async () => {
+		return await this.#beforeCall(async () => {
+			try {
+				return await fetchAttendance(this.#HEADERS)
+			} catch (error) {
+				logger.log('error', `Getting attendance: ${error.message}`)
+				throw new Error(error.message)
+			}
+		})
+	}
+  
+	// Метод для получения списка лидеров
+	/**
+	 * Получает список лидеров (100 лучших студентов).
+	 * @returns {Promise<Object[]>} Массив объектов с данными лидеров.
+	 * @throws Выбрасывает ошибку при неудачном получении списка лидеров.
+	 */
+	getLeaders = async () => {
+		return await this.#beforeCall(async () => {
+			try {
+				return await fetchLeaders(this.#HEADERS)
+			} catch (error) {
+				logger.log('error', `Getting leaders: ${error.message}`)
 				throw new Error(error.message)
 			}
 		})

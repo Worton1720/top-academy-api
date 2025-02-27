@@ -4,4 +4,4 @@
  * @description Библиотека для работы с API студента
  * @exports StudentAPI
  */
-export { StudentAPI } from 'top-academy-api/src/models/student.js'
+export { StudentAPI } from "./src/models/student.js";
