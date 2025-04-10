@@ -24,6 +24,13 @@ async function parseProfile(HEADERS) {
     endpoints.map((url) => apiRequest(url, { headers: HEADERS }))
   );
 
+  let user_top_coins = results[1].gaming_points
+    .filter((point) => point.new_gaming_point_types__id === 1)
+    .reduce((total, point) => total + point.points, 0);
+  let user_top_gems = results[1].gaming_points
+    .filter((point) => point.new_gaming_point_types__id === 2)
+    .reduce((total, point) => total + point.points, 0);
+
   logger.log("info", "Finished");
 
   // Создаем объект с уникальными данными профиля
@@ -31,7 +38,7 @@ async function parseProfile(HEADERS) {
     profile: {
       id: results[0].id,
       photo: results[0].photo_path,
-      full_name: results[0].ful_name,
+      full_name: results[1].full_name,
       gender: results[0].gender,
       date_birth: results[0].date_birth,
       age: results[0].age,
@@ -42,24 +49,30 @@ async function parseProfile(HEADERS) {
       links: results[0].links,
       relatives: results[0].relatives,
       azure: results[0].azure,
-      groups: results[0].groups,
-      manual_link: results[0].manual_link,
-      student_id: results[0].student_id,
-      current_group_id: results[0].current_group_id,
+      group: results[1].groups,
+      manual_link: results[1].manual_link,
+      student_id: results[1].student_id,
+      current_group_id: results[1].current_group_id,
+      visibility: results[1].visibility,
     },
     achievements: {
-      achieves_count: results[0].achieves_count,
+      achieves_count: results[1].achieves_count,
     },
     gaming: {
-      gaming_points: results[0].gaming_points,
-      spent_gaming_points: results[0].spent_gaming_points,
+      top_money: user_top_coins + user_top_gems,
+      top_coins: user_top_coins,
+      top_gems: user_top_gems,
+      spent_top_money: results[1].spent_gaming_points.reduce(
+        (total, point) => total + point.points,
+        0
+      ),
     },
     group: {
-      level: results[0].level,
-      stream_id: results[0].stream_id,
-      stream_name: results[0].stream_name,
-      group_name: results[0].group_name,
-      current_group_status: results[0].current_group_status,
+      level: results[1].level,
+      stream_id: results[1].stream_id,
+      stream_name: results[1].stream_name,
+      group_name: results[1].group_name,
+      current_group_status: results[1].current_group_status,
     },
     statistics: {
       birthday: results[0].birthday,
@@ -75,6 +88,9 @@ async function parseProfile(HEADERS) {
       is_phone_verified: results[0].is_phone_verified,
       decline_comment: results[0].decline_comment,
     },
+
+    // "operations-settings": results[0],
+    // "user-info": results[1],
   };
 
   return uniqueProfile;
@@ -103,10 +119,38 @@ async function fetchAverageGrade(HEADERS) {
 }
 
 // Функция для получения количества домашних заданий
+// 0 - Проверенные, 1 - Текущие, 2 - Просроченные, 3 - На проверке, 4 - Удаленные, 5 - Всего заданий.
 async function fetchHomework(HEADERS) {
   const fullUrl = `${COLLEGE_WEB_SITE.API_URL}/count/homework`;
   try {
-    return await apiRequest(fullUrl, { headers: HEADERS });
+    const response = await apiRequest(fullUrl, { headers: HEADERS });
+    logger.log("info", "fetchHomework-response:\n", response);
+    // overdue - просроченные, checked - проверенные, current - текущие, onCheck - на проверке, all - все, deleted - удаленные
+    const homework = response.reduce((obj, item) => {
+      switch (item.counter_type) {
+        case 0:
+          obj["overdue"] = item.counter;
+          break;
+        case 1:
+          obj["checked"] = item.counter;
+          break;
+        case 2:
+          obj["onCheck"] = item.counter;
+          break;
+        case 3:
+          obj["current"] = item.counter;
+          break;
+        case 4:
+          obj["all"] = item.counter;
+          break;
+        case 5:
+          obj["deleted"] = item.counter;
+          break;
+      }
+      return obj;
+    }, {});
+    logger.log("info", "fetchHomeworkhomework:\n", homework);
+    return homework;
   } catch (error) {
     logger.log("error", `Error fetching homework: ${error.message}`);
     return null;
